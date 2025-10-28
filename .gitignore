@@ -1,0 +1,74 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+env/
+
+# Flask
+instance/
+.webassets-cache
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+encryption_audit.db
+
+# Logs
+logs/*.log
+*.log
+
+# Uploads
+uploads/*
+!uploads/.gitkeep
+
+# Temporary encrypted files
+temp_encrypted/
+
+# Key Vault
+database/key_vault.enc
+database/.master_key
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Environment variables
+.env
+.env.local
+
+# Reports
+reports/*.pdf
+
+# Temporary files
+*.tmp
+*.temp

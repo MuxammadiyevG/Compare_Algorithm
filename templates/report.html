@@ -1,0 +1,556 @@
+{% extends "base.html" %}
+
+{% block title %}Hisobot - Intellektual Audit Modeli{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in">
+    <!-- Header -->
+    <div class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                <i class="fas fa-file-alt mr-3 text-primary"></i>Tahlil Hisoboti
+            </h1>
+            <p class="text-gray-600 dark:text-gray-400">Shifrlash algoritmlari tahlil natijalari</p>
+        </div>
+        <a href="{{ url_for('export_pdf') }}" class="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors shadow-lg hover:shadow-xl transform hover:scale-105">
+            <i class="fas fa-file-pdf mr-2"></i>PDF Eksport
+        </a>
+    </div>
+    
+    {% if results %}
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {% for result in results %}
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 card-hover border-l-4 
+                    {% if result.algorithm == 'AES' %}border-blue-500
+                    {% elif result.algorithm == 'DES' %}border-red-500
+                    {% elif result.algorithm == 'Blowfish' %}border-orange-500
+                    {% else %}border-purple-500{% endif %}">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white">{{ result.algorithm }}</h3>
+                <i class="fas fa-{% if result.algorithm == 'AES' %}shield-alt{% elif result.algorithm == 'DES' %}exclamation-triangle{% elif result.algorithm == 'Blowfish' %}key{% else %}lock{% endif %} text-2xl 
+                   {% if result.algorithm == 'AES' %}text-blue-500
+                   {% elif result.algorithm == 'DES' %}text-red-500
+                   {% elif result.algorithm == 'Blowfish' %}text-orange-500
+                   {% else %}text-purple-500{% endif %}"></i>
+            </div>
+            <div class="space-y-2">
+                <div class="flex justify-between items-center">
+                    <span class="text-sm text-gray-600 dark:text-gray-400">Umumiy Ball:</span>
+                    <span class="text-lg font-bold {% if result.S_overall_score >= 0.7 %}text-green-600{% elif result.S_overall_score >= 0.4 %}text-yellow-600{% else %}text-red-600{% endif %}">
+                        {{ "%.4f"|format(result.S_overall_score) }}
+                    </span>
+                </div>
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-gray-600 dark:text-gray-400">Tezlik:</span>
+                    <span class="text-gray-900 dark:text-white font-semibold">{{ "%.4f"|format(result.T_performance) }}</span>
+                </div>
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-gray-600 dark:text-gray-400">Xavfsizlik:</span>
+                    <span class="text-gray-900 dark:text-white font-semibold">{{ "%.4f"|format(result.E_security) }}</span>
+                </div>
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-gray-600 dark:text-gray-400">Kalit:</span>
+                    <span class="text-gray-900 dark:text-white font-semibold">{{ "%.4f"|format(result.K_key_management) }}</span>
+                </div>
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-gray-600 dark:text-gray-400">Yaxlitlik:</span>
+                    <span class="text-gray-900 dark:text-white font-semibold">{{ "%.4f"|format(result.I_integrity) }}</span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Best Algorithm -->
+    <div class="bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl shadow-xl p-8 text-white mb-8 text-center relative overflow-hidden">
+        <div class="absolute top-0 right-0 opacity-10">
+            <i class="fas fa-trophy text-9xl"></i>
+        </div>
+        <div class="relative z-10">
+            <i class="fas fa-trophy text-5xl mb-4 animate-bounce"></i>
+            <h2 class="text-2xl font-bold mb-2">Eng Samarali Algoritm</h2>
+            <p class="text-5xl font-bold mb-2">
+                {% set best = results|sort(attribute='S_overall_score', reverse=true)|first %}
+                {{ best.algorithm }}
+            </p>
+            <p class="text-xl opacity-90">Ball: {{ "%.4f"|format(best.S_overall_score) }}</p>
+        </div>
+    </div>
+    
+    <!-- Comparison Chart -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8">
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+            <i class="fas fa-chart-bar mr-2"></i>Algoritmlar Taqqoslash
+        </h2>
+        <canvas id="reportChart" height="100"></canvas>
+    </div>
+    
+    <!-- Radar Chart -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8">
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+            <i class="fas fa-spider mr-2"></i>Ko'rsatkichlar Tahlili
+        </h2>
+        <div class="max-w-2xl mx-auto">
+            <canvas id="radarChart"></canvas>
+        </div>
+    </div>
+    
+    <!-- Detailed Comparison Table -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8">
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+            <i class="fas fa-table mr-2"></i>Batafsil Taqqoslash Jadvali
+        </h2>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead>
+                    <tr class="border-b-2 border-gray-200 dark:border-gray-700">
+                        <th class="text-left py-3 px-4 text-gray-600 dark:text-gray-400 font-semibold">Algoritm</th>
+                        <th class="text-center py-3 px-4 text-gray-600 dark:text-gray-400 font-semibold">S (Umumiy)</th>
+                        <th class="text-center py-3 px-4 text-gray-600 dark:text-gray-400 font-semibold">T (Tezlik)</th>
+                        <th class="text-center py-3 px-4 text-gray-600 dark:text-gray-400 font-semibold">E (Xavfsizlik)</th>
+                        <th class="text-center py-3 px-4 text-gray-600 dark:text-gray-400 font-semibold">K (Kalit)</th>
+                        <th class="text-center py-3 px-4 text-gray-600 dark:text-gray-400 font-semibold">I (Yaxlitlik)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for result in results|sort(attribute='S_overall_score', reverse=true) %}
+                    <tr class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                        <td class="py-4 px-4">
+                            <span class="font-bold text-gray-900 dark:text-white text-lg">{{ result.algorithm }}</span>
+                        </td>
+                        <td class="py-4 px-4 text-center">
+                            <span class="px-3 py-1 rounded-full text-sm font-bold
+                                {% if result.S_overall_score >= 0.7 %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
+                                {% elif result.S_overall_score >= 0.4 %}bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200
+                                {% else %}bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200{% endif %}">
+                                {{ "%.4f"|format(result.S_overall_score) }}
+                            </span>
+                        </td>
+                        <td class="py-4 px-4 text-center text-gray-700 dark:text-gray-300 font-medium">{{ "%.4f"|format(result.T_performance) }}</td>
+                        <td class="py-4 px-4 text-center text-gray-700 dark:text-gray-300 font-medium">{{ "%.4f"|format(result.E_security) }}</td>
+                        <td class="py-4 px-4 text-center text-gray-700 dark:text-gray-300 font-medium">{{ "%.4f"|format(result.K_key_management) }}</td>
+                        <td class="py-4 px-4 text-center text-gray-700 dark:text-gray-300 font-medium">{{ "%.4f"|format(result.I_integrity) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Performance Metrics -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8">
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+            <i class="fas fa-tachometer-alt mr-2"></i>Ishlash Ko'rsatkichlari
+        </h2>
+        
+        <!-- CPU Usage Chart -->
+        <div class="mb-8">
+            <h3 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">CPU Foydalanishi (%)</h3>
+            <div class="h-64">
+                <canvas id="cpuChart"></canvas>
+            </div>
+        </div>
+        
+        <!-- RAM Usage Chart -->
+        <div class="mb-8">
+            <h3 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">Xotira Ishlatilishi (MB)</h3>
+            <div class="h-64">
+                <canvas id="ramChart"></canvas>
+            </div>
+        </div>
+        
+        <!-- Performance Table -->
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead>
+                    <tr class="border-b-2 border-gray-200 dark:border-gray-700">
+                        <th class="text-left py-3 px-4 text-gray-600 dark:text-gray-400 font-semibold">Algoritm</th>
+                        <th class="text-center py-3 px-4 text-gray-600 dark:text-gray-400 font-semibold">Shifrlash (ms)</th>
+                        <th class="text-center py-3 px-4 text-gray-600 dark:text-gray-400 font-semibold">Deshifrlash (ms)</th>
+                        <th class="text-center py-3 px-4 text-gray-600 dark:text-gray-400 font-semibold">Jami (ms)</th>
+                        <th class="text-center py-3 px-4 text-gray-600 dark:text-gray-400 font-semibold">CPU (%)</th>
+                        <th class="text-center py-3 px-4 text-gray-600 dark:text-gray-400 font-semibold">RAM (MB)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for result in results %}
+                    <tr class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                        <td class="py-3 px-4 font-semibold text-gray-900 dark:text-white">
+                            <div class="flex items-center">
+                                <span class="w-3 h-3 rounded-full mr-2" 
+                                      style="background-color: {{ ['#3B82F6', '#EF4444', '#F59E0B', '#8B5CF6', '#10B981'][loop.index0 % 5] }}">
+                                </span>
+                                {{ result.algorithm }}
+                            </div>
+                        </td>
+                        <td class="py-3 px-4 text-center text-gray-700 dark:text-gray-300">{{ "%.4f"|format(result.encryption_time_ms) }}</td>
+                        <td class="py-3 px-4 text-center text-gray-700 dark:text-gray-300">{{ "%.4f"|format(result.decryption_time_ms) }}</td>
+                        <td class="py-3 px-4 text-center text-gray-700 dark:text-gray-300 font-semibold">{{ "%.4f"|format(result.total_time_ms) }}</td>
+                        <td class="py-3 px-4 text-center text-gray-700 dark:text-gray-300 font-semibold">{{ "%.2f"|format(result.avg_cpu_percent) }}</td>
+                        <td class="py-3 px-4 text-center text-gray-700 dark:text-gray-300 font-semibold">{{ "%.2f"|format(result.avg_memory_mb) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Security Metrics -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8">
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+            <i class="fas fa-shield-alt mr-2"></i>Xavfsizlik Ko'rsatkichlari
+        </h2>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead>
+                    <tr class="border-b-2 border-gray-200 dark:border-gray-700">
+                        <th class="text-left py-3 px-4 text-gray-600 dark:text-gray-400 font-semibold">Algoritm</th>
+                        <th class="text-center py-3 px-4 text-gray-600 dark:text-gray-400 font-semibold">Kalit Hajmi (bit)</th>
+                        <th class="text-center py-3 px-4 text-gray-600 dark:text-gray-400 font-semibold">Entropiya</th>
+                        <th class="text-center py-3 px-4 text-gray-600 dark:text-gray-400 font-semibold">Xavfsizlik Darajasi</th>
+                        <th class="text-center py-3 px-4 text-gray-600 dark:text-gray-400 font-semibold">Yaxlitlik</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for result in results %}
+                    <tr class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                        <td class="py-3 px-4 font-semibold text-gray-900 dark:text-white">{{ result.algorithm }}</td>
+                        <td class="py-3 px-4 text-center text-gray-700 dark:text-gray-300">{{ result.key_size }}</td>
+                        <td class="py-3 px-4 text-center text-gray-700 dark:text-gray-300">{{ "%.4f"|format(result.entropy) }}</td>
+                        <td class="py-3 px-4 text-center">
+                            <span class="px-3 py-1 rounded-full text-sm font-semibold
+                                {% if result.security_level == 'High' %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
+                                {% elif result.security_level == 'Medium' %}bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200
+                                {% else %}bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200{% endif %}">
+                                {{ result.security_level }}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 text-center">
+                            {% if result.integrity_check %}
+                            <i class="fas fa-check-circle text-green-600 dark:text-green-400 text-xl"></i>
+                            {% else %}
+                            <i class="fas fa-times-circle text-red-600 dark:text-red-400 text-xl"></i>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Actions -->
+    <div class="flex flex-col md:flex-row gap-4">
+        <a href="{{ url_for('analyze') }}" class="flex-1 bg-primary hover:bg-purple-700 text-white font-semibold py-4 rounded-lg text-center transition-colors shadow-lg hover:shadow-xl transform hover:scale-105">
+            <i class="fas fa-redo mr-2"></i>Yangi Tahlil
+        </a>
+        <a href="{{ url_for('export_pdf') }}" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-4 rounded-lg text-center transition-colors shadow-lg hover:shadow-xl transform hover:scale-105">
+            <i class="fas fa-file-pdf mr-2"></i>PDF Yuklab Olish
+        </a>
+        <a href="{{ url_for('history') }}" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-4 rounded-lg text-center transition-colors shadow-lg hover:shadow-xl transform hover:scale-105">
+            <i class="fas fa-history mr-2"></i>Tarix
+        </a>
+    </div>
+    
+    {% else %}
+    <div class="bg-yellow-100 dark:bg-yellow-900 rounded-xl p-8 text-center">
+        <i class="fas fa-info-circle text-5xl text-yellow-600 dark:text-yellow-400 mb-4"></i>
+        <p class="text-xl text-yellow-800 dark:text-yellow-200 mb-4">Tahlil natijalari topilmadi</p>
+        <p class="text-gray-700 dark:text-gray-300 mb-6">Algoritm tahlilini boshlash uchun quyidagi tugmani bosing</p>
+        <a href="{{ url_for('analyze') }}" class="inline-block bg-primary hover:bg-purple-700 text-white font-semibold px-8 py-3 rounded-lg transition-colors shadow-lg">
+            <i class="fas fa-play-circle mr-2"></i>Tahlil Boshlash
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<script id="chart-data" type="application/json">
+    {{ results|tojson|safe }}
+</script>
+{% endblock %}
+
+{% block scripts %}
+{% if results %}
+<script>
+    // Ma'lumotlarni JSON dan olish
+    var reportResults = JSON.parse(document.getElementById('chart-data').textContent);
+    
+    // Bar Chart - Overall Scores
+    var ctxBar = document.getElementById('reportChart').getContext('2d');
+    new Chart(ctxBar, {
+        type: 'bar',
+        data: {
+            labels: reportResults.map(function(r) { return r.algorithm; }),
+            datasets: [{
+                label: 'Umumiy Ball (S)',
+                data: reportResults.map(function(r) { return r.S_overall_score; }),
+                backgroundColor: [
+                    'rgba(59, 130, 246, 0.8)',
+                    'rgba(239, 68, 68, 0.8)',
+                    'rgba(251, 146, 60, 0.8)',
+                    'rgba(168, 85, 247, 0.8)'
+                ],
+                borderColor: [
+                    'rgb(59, 130, 246)',
+                    'rgb(239, 68, 68)',
+                    'rgb(251, 146, 60)',
+                    'rgb(168, 85, 247)'
+                ],
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                title: {
+                    display: true,
+                    text: 'Algoritmlar Samaradorligi',
+                    font: {
+                        size: 16,
+                        weight: 'bold'
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 1,
+                    ticks: {
+                        callback: function(value) {
+                            return value.toFixed(2);
+                        }
+                    }
+                }
+            }
+        }
+    });
+    
+    // Radar Chart - Metrics Comparison
+    var ctxRadar = document.getElementById('radarChart').getContext('2d');
+    var colors = [
+        'rgba(59, 130, 246, 0.6)',   // blue
+        'rgba(239, 68, 68, 0.6)',    // red
+        'rgba(245, 158, 11, 0.6)',   // amber
+        'rgba(139, 92, 246, 0.6)',   // violet
+        'rgba(16, 185, 129, 0.6)'    // emerald
+    ];
+    
+    var datasets = reportResults.map(function(result, index) {
+        return {
+            label: result.algorithm,
+            data: [
+                result.T_performance,
+                result.E_security,
+                result.K_key_management,
+                result.I_integrity
+            ],
+            backgroundColor: colors[index % colors.length],
+            borderColor: colors[index % colors.length].replace('0.6', '1'),
+            borderWidth: 2,
+            pointBackgroundColor: colors[index % colors.length].replace('0.6', '1'),
+            pointBorderColor: '#fff',
+            pointHoverBackgroundColor: '#fff',
+            pointHoverBorderColor: colors[index % colors.length].replace('0.6', '1')
+        };
+    });
+    
+    new Chart(ctxRadar, {
+        type: 'radar',
+        data: {
+            labels: ['Tezlik (T)', 'Xavfsizlik (E)', 'Kalit Boshqaruv (K)', 'Yaxlitlik (I)'],
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            aspectRatio: 1.5,
+            plugins: {
+                legend: {
+                    position: 'right',
+                    align: 'center',
+                    labels: {
+                        boxWidth: 12,
+                        padding: 20,
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                        font: {
+                            size: 12
+                        }
+                    }
+                },
+                title: {
+                    display: true,
+                    text: 'Korsatkichlar Taqqoslash',
+                    font: {
+                        size: 16,
+                        weight: 'bold'
+                    },
+                    padding: {
+                        bottom: 20
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + context.raw.toFixed(2);
+                        }
+                    }
+                }
+            },
+            elements: {
+                line: {
+                    borderWidth: 2,
+                    tension: 0.1
+                },
+                point: {
+                    radius: 4,
+                    hoverRadius: 6,
+                    hoverBorderWidth: 2
+                }
+            },
+            scales: {
+                r: {
+                    beginAtZero: true,
+                    max: 1,
+                    ticks: {
+                        stepSize: 0.2,
+                        display: true,
+                        backdropPadding: 0
+                    },
+                    angleLines: {
+                        display: true,
+                        color: 'rgba(128, 128, 128, 0.2)'
+                    },
+                    grid: {
+                        color: 'rgba(128, 128, 128, 0.1)'
+                    },
+                    pointLabels: {
+                        font: {
+                            size: 12
+                        },
+                        padding: 10
+                    }
+                }
+            },
+            layout: {
+                padding: 20
+            }
+        }
+    });
+    
+    // CPU Usage Chart
+    var ctxCpu = document.getElementById('cpuChart').getContext('2d');
+    new Chart(ctxCpu, {
+        type: 'bar',
+        data: {
+            labels: reportResults.map(r => r.algorithm),
+            datasets: [{
+                label: 'CPU Foydalanishi (%)',
+                data: reportResults.map(r => r.avg_cpu_percent),
+                backgroundColor: colors.map(c => c.replace('0.6', '0.7')),
+                borderColor: colors.map(c => c.replace('0.6', '1')),
+                borderWidth: 1,
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.parsed.y.toFixed(2) + '%';
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Foiz (%)',
+                        font: {
+                            weight: 'bold'
+                        }
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+    
+    // RAM Usage Chart
+    var ctxRam = document.getElementById('ramChart').getContext('2d');
+    new Chart(ctxRam, {
+        type: 'bar',
+        data: {
+            labels: reportResults.map(r => r.algorithm),
+            datasets: [{
+                label: 'Xotira Ishlatilishi (MB)',
+                data: reportResults.map(r => r.avg_memory_mb),
+                backgroundColor: colors.map(c => c.replace('0.6', '0.7')),
+                borderColor: colors.map(c => c.replace('0.6', '1')),
+                borderWidth: 1,
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.parsed.y.toFixed(2) + ' MB';
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Megabayt (MB)',
+                        font: {
+                            weight: 'bold'
+                        }
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return value + ' MB';
+                        }
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endif %}
+{% endblock %}

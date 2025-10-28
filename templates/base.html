@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Intellektual Audit Modeli{% endblock %}</title>
+    
+    <!-- TailwindCSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4F46E5',
+                        secondary: '#7C3AED',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .glassmorphism {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .neumorphism {
+            background: #e0e5ec;
+            box-shadow: 9px 9px 16px #a3b1c6, -9px -9px 16px #ffffff;
+        }
+        
+        .dark .neumorphism {
+            background: #1e293b;
+            box-shadow: 9px 9px 16px #0f172a, -9px -9px 16px #2d3b52;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    
+    {% if current_user.is_authenticated %}
+    <!-- Navigation -->
+    <nav class="bg-white dark:bg-gray-800 shadow-lg sticky top-0 z-50 transition-colors duration-300">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 flex items-center">
+                        <i class="fas fa-brain text-3xl text-primary mr-3"></i>
+                        <span class="text-xl font-bold text-gray-900 dark:text-white">Intellektual Audit</span>
+                    </div>
+                    <div class="hidden md:ml-10 md:flex md:space-x-8">
+                        <a href="{{ url_for('index') }}" class="nav-link {% if request.endpoint == 'index' %}active{% endif %}">
+                            <i class="fas fa-home mr-2"></i>Dashboard
+                        </a>
+                        <a href="{{ url_for('analyze') }}" class="nav-link {% if request.endpoint == 'analyze' %}active{% endif %}">
+                            <i class="fas fa-chart-line mr-2"></i>Tahlil
+                        </a>
+                        <a href="{{ url_for('secure_encrypt') }}" class="nav-link {% if request.endpoint == 'secure_encrypt' %}active{% endif %}">
+                            <i class="fas fa-shield-alt mr-2"></i>Shifrlash
+                        </a>
+                        <a href="{{ url_for('secure_decrypt') }}" class="nav-link {% if request.endpoint == 'secure_decrypt' %}active{% endif %}">
+                            <i class="fas fa-unlock-alt mr-2"></i>Deshifrlash
+                        </a>
+                        <a href="{{ url_for('report') }}" class="nav-link {% if request.endpoint == 'report' %}active{% endif %}">
+                            <i class="fas fa-file-alt mr-2"></i>Hisobot
+                        </a>
+                        <a href="{{ url_for('history') }}" class="nav-link {% if request.endpoint == 'history' %}active{% endif %}">
+                            <i class="fas fa-history mr-2"></i>Tarix
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <!-- Theme Toggle -->
+                    <button id="theme-toggle" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                        <i class="fas fa-moon dark:hidden text-gray-600"></i>
+                        <i class="fas fa-sun hidden dark:inline text-yellow-400"></i>
+                    </button>
+                    
+                    <!-- User Menu -->
+                    <div class="relative" x-data="{ open: false }">
+                        <button @click="open = !open" class="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                            <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-semibold">
+                                {{ current_user.username[0].upper() }}
+                            </div>
+                            <span class="text-gray-700 dark:text-gray-300 font-medium">{{ current_user.username }}</span>
+                            <i class="fas fa-chevron-down text-gray-500"></i>
+                        </button>
+                        
+                        <div x-show="open" @click.away="open = false" class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg py-2 z-50">
+                            <a href="{{ url_for('logout') }}" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                <i class="fas fa-sign-out-alt mr-2"></i>Chiqish
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+    
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+                {% for category, message in messages %}
+                <div class="alert alert-{{ category }} animate-fade-in">
+                    <i class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'error' %}exclamation-circle{% else %}info-circle{% endif %} mr-2"></i>
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+    
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {% block content %}{% endblock %}
+    </main>
+    
+    <!-- Footer -->
+    <footer class="bg-white dark:bg-gray-800 mt-16 border-t border-gray-200 dark:border-gray-700">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="text-center text-gray-600 dark:text-gray-400">
+                <p class="mb-2">© 2024 Intellektual Audit Modeli - Dasturiy Ta'minot Xavfsizligi Tahlil Tizimi</p>
+                <p class="text-sm">AES | DES | Blowfish | ChaCha20</p>
+            </div>
+        </div>
+    </footer>
+    
+    <!-- Alpine.js for interactive components -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
+    <!-- Custom JavaScript -->
+    <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+    
+    <script>
+        // Theme Toggle
+        const themeToggle = document.getElementById('theme-toggle');
+        const html = document.documentElement;
+        
+        // Check for saved theme preference or default to light mode
+        const currentTheme = localStorage.getItem('theme') || 'light';
+        html.classList.toggle('dark', currentTheme === 'dark');
+        
+        themeToggle?.addEventListener('click', () => {
+            html.classList.toggle('dark');
+            const theme = html.classList.contains('dark') ? 'dark' : 'light';
+            localStorage.setItem('theme', theme);
+        });
+        
+        // Auto-hide alerts after 5 seconds
+        setTimeout(() => {
+            document.querySelectorAll('.alert').forEach(alert => {
+                alert.style.opacity = '0';
+                setTimeout(() => alert.remove(), 300);
+            });
+        }, 5000);
+    </script>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>

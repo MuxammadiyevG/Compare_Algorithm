@@ -1,0 +1,538 @@
+{% extends "base.html" %}
+
+{% block title %}Tahlil - Intellektual Audit Modeli{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in">
+    <!-- Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            <i class="fas fa-chart-line mr-3 text-primary"></i>Shifrlash Algoritmlari Tahlili
+        </h1>
+        <p class="text-gray-600 dark:text-gray-400">Ma'lumotlarni shifrlang va algoritmlarni taqqoslang</p>
+    </div>
+    
+    <!-- Input Section -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8">
+        <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-6">
+            <i class="fas fa-keyboard mr-2"></i>Ma'lumot Kiritish
+        </h2>
+        
+        <form id="analyzeForm" class="space-y-6">
+            <!-- Input Type Selection -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                    Kirish turi
+                </label>
+                <div class="flex space-x-4">
+                    <label class="flex items-center cursor-pointer">
+                        <input type="radio" name="input_type" value="text" checked class="mr-2">
+                        <span class="text-gray-700 dark:text-gray-300">
+                            <i class="fas fa-font mr-1"></i>Matn
+                        </span>
+                    </label>
+                    <label class="flex items-center cursor-pointer">
+                        <input type="radio" name="input_type" value="file" class="mr-2">
+                        <span class="text-gray-700 dark:text-gray-300">
+                            <i class="fas fa-file mr-1"></i>Fayl
+                        </span>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Text Input -->
+            <div id="textInput">
+                <label for="plaintext" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <i class="fas fa-align-left mr-2"></i>Shifrlash uchun matn
+                </label>
+                <textarea id="plaintext" 
+                          name="plaintext" 
+                          rows="6"
+                          class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                          placeholder="Bu yerga shifrlash uchun matn kiriting...">Bu test matni. Shifrlash algoritmlari tahlil qilinmoqda.</textarea>
+            </div>
+            
+            <!-- File Input -->
+            <div id="fileInput" class="hidden">
+                <label for="file" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <i class="fas fa-upload mr-2"></i>Fayl yuklash
+                </label>
+                <input type="file" 
+                       id="file" 
+                       name="file"
+                       class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary transition-all">
+            </div>
+            
+            <!-- Submit Button -->
+            <button type="submit" 
+                    id="analyzeBtn"
+                    class="w-full bg-gradient-to-r from-primary to-purple-700 text-white font-semibold py-4 rounded-lg hover:from-purple-700 hover:to-indigo-800 transform hover:scale-105 transition-all shadow-lg">
+                <i class="fas fa-play-circle mr-2"></i>Tahlilni Boshlash
+            </button>
+        </form>
+    </div>
+    
+    <!-- Loading Indicator -->
+    <div id="loadingIndicator" class="hidden bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 mb-8">
+        <div class="text-center">
+            <div class="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-primary mb-4"></div>
+            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Tahlil qilinmoqda...</h3>
+            <p class="text-gray-600 dark:text-gray-400">Barcha algoritmlar sinovdan o'tkazilmoqda</p>
+            <div class="mt-4">
+                <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                    <div id="progressBar" class="bg-primary h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Results Section -->
+    <div id="resultsSection" class="hidden">
+        <!-- Best Algorithm -->
+        <div id="bestAlgorithm" class="bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl shadow-xl p-6 text-white mb-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-semibold mb-2">
+                        <i class="fas fa-trophy mr-2"></i>Eng Samarali Algoritm
+                    </h3>
+                    <p id="bestAlgoName" class="text-4xl font-bold"></p>
+                </div>
+                <i class="fas fa-award text-8xl opacity-20"></i>
+            </div>
+        </div>
+        
+        <!-- Comparison Chart -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8">
+            <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-6">
+                <i class="fas fa-chart-bar mr-2"></i>Algoritmlar Taqqoslash
+            </h2>
+            <canvas id="comparisonChart" height="100"></canvas>
+        </div>
+        
+        <!-- Radar Chart -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8">
+            <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-6">
+                <i class="fas fa-spider mr-2"></i>Ko'rsatkichlar Tahlili
+            </h2>
+            <div class="max-w-2xl mx-auto">
+                <canvas id="radarChart"></canvas>
+            </div>
+        </div>
+        
+        <!-- Performance Chart -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8">
+            <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-6">
+                <i class="fas fa-tachometer-alt mr-2"></i>Ishlash Ko'rsatkichlari
+            </h2>
+            <canvas id="performanceChart" height="100"></canvas>
+        </div>
+        
+        <!-- Detailed Results Table -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8">
+            <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-6">
+                <i class="fas fa-table mr-2"></i>Batafsil Natijalar
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="w-full" id="resultsTable">
+                    <thead>
+                        <tr class="border-b-2 border-gray-200 dark:border-gray-700">
+                            <th class="text-left py-3 px-4 text-gray-600 dark:text-gray-400 font-semibold">Algoritm</th>
+                            <th class="text-left py-3 px-4 text-gray-600 dark:text-gray-400 font-semibold">Umumiy Ball (S)</th>
+                            <th class="text-left py-3 px-4 text-gray-600 dark:text-gray-400 font-semibold">Tezlik (T)</th>
+                            <th class="text-left py-3 px-4 text-gray-600 dark:text-gray-400 font-semibold">Xavfsizlik (E)</th>
+                            <th class="text-left py-3 px-4 text-gray-600 dark:text-gray-400 font-semibold">Kalit (K)</th>
+                            <th class="text-left py-3 px-4 text-gray-600 dark:text-gray-400 font-semibold">Yaxlitlik (I)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsTableBody">
+                        <!-- Results will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Actions -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <a href="{{ url_for('report') }}" class="bg-primary hover:bg-purple-700 text-white font-semibold py-4 rounded-lg text-center transition-colors">
+                <i class="fas fa-file-alt mr-2"></i>Hisobotni Ko'rish
+            </a>
+            <button onclick="showSaveModal()" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-4 rounded-lg transition-colors">
+                <i class="fas fa-save mr-2"></i>Saqlash
+            </button>
+            <button onclick="location.reload()" class="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-4 rounded-lg transition-colors">
+                <i class="fas fa-redo mr-2"></i>Qayta Tahlil
+            </button>
+        </div>
+    </div>
+    
+    <!-- Save Modal -->
+    <div id="saveModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-8 max-w-md w-full mx-4">
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+                <i class="fas fa-save mr-2 text-green-600"></i>Ma'lumotni Saqlash
+            </h2>
+            
+            <div class="mb-6">
+                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    Shifrlash Algoritmi
+                </label>
+                <select id="saveAlgorithm" class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                    <option value="AES">AES-256 (Tavsiya etiladi)</option>
+                    <option value="ChaCha20">ChaCha20</option>
+                    <option value="Blowfish">Blowfish</option>
+                    <option value="DES">DES (Zaif - tavsiya etilmaydi)</option>
+                </select>
+            </div>
+            
+            <div class="flex gap-4">
+                <button onclick="saveEncrypted()" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition-colors">
+                    <i class="fas fa-check mr-2"></i>Saqlash
+                </button>
+                <button onclick="closeSaveModal()" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 rounded-lg transition-colors">
+                    <i class="fas fa-times mr-2"></i>Bekor qilish
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Toggle input type
+    document.querySelectorAll('input[name="input_type"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            if (e.target.value === 'text') {
+                document.getElementById('textInput').classList.remove('hidden');
+                document.getElementById('fileInput').classList.add('hidden');
+            } else {
+                document.getElementById('textInput').classList.add('hidden');
+                document.getElementById('fileInput').classList.remove('hidden');
+            }
+        });
+    });
+    
+    // Form submission
+    document.getElementById('analyzeForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const formData = new FormData(e.target);
+        const inputType = formData.get('input_type');
+        
+        // Save plaintext for later encryption
+        if (inputType === 'text') {
+            currentPlaintext = formData.get('plaintext');
+        } else {
+            const file = formData.get('file');
+            if (file) {
+                currentPlaintext = await file.text();
+            }
+        }
+        
+        // Validate input
+        if (inputType === 'text' && !formData.get('plaintext')) {
+            alert('Iltimos, matn kiriting!');
+            return;
+        }
+        
+        if (inputType === 'file' && !formData.get('file').name) {
+            alert('Iltimos, fayl tanlang!');
+            return;
+        }
+        
+        // Show loading
+        document.getElementById('loadingIndicator').classList.remove('hidden');
+        document.getElementById('resultsSection').classList.add('hidden');
+        
+        // Animate progress bar
+        let progress = 0;
+        const progressInterval = setInterval(() => {
+            progress += 5;
+            document.getElementById('progressBar').style.width = progress + '%';
+            if (progress >= 90) clearInterval(progressInterval);
+        }, 200);
+        
+        try {
+            const response = await fetch('{{ url_for("analyze") }}', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            clearInterval(progressInterval);
+            document.getElementById('progressBar').style.width = '100%';
+            
+            if (data.success) {
+                setTimeout(() => {
+                    displayResults(data.results, data.best_algorithm);
+                }, 500);
+            } else {
+                alert('Xatolik: ' + (data.error || 'Noma\'lum xatolik'));
+                document.getElementById('loadingIndicator').classList.add('hidden');
+            }
+        } catch (error) {
+            clearInterval(progressInterval);
+            alert('Xatolik: ' + error.message);
+            document.getElementById('loadingIndicator').classList.add('hidden');
+        }
+    });
+    
+    function displayResults(results, bestAlgorithm) {
+        // Hide loading, show results
+        document.getElementById('loadingIndicator').classList.add('hidden');
+        document.getElementById('resultsSection').classList.remove('hidden');
+        
+        // Display best algorithm
+        document.getElementById('bestAlgoName').textContent = bestAlgorithm;
+        
+        // Sort results by score
+        results.sort((a, b) => b.S_overall_score - a.S_overall_score);
+        
+        // Populate table
+        const tbody = document.getElementById('resultsTableBody');
+        tbody.innerHTML = '';
+        
+        results.forEach(result => {
+            const scoreClass = result.S_overall_score >= 0.7 ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                              result.S_overall_score >= 0.4 ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                              'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+            
+            tbody.innerHTML += `
+                <tr class="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                    <td class="py-3 px-4 font-semibold text-gray-900 dark:text-white">${result.algorithm}</td>
+                    <td class="py-3 px-4">
+                        <span class="px-3 py-1 rounded-full text-sm font-semibold ${scoreClass}">
+                            ${result.S_overall_score.toFixed(4)}
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 text-gray-700 dark:text-gray-300">${result.T_performance.toFixed(4)}</td>
+                    <td class="py-3 px-4 text-gray-700 dark:text-gray-300">${result.E_security.toFixed(4)}</td>
+                    <td class="py-3 px-4 text-gray-700 dark:text-gray-300">${result.K_key_management.toFixed(4)}</td>
+                    <td class="py-3 px-4 text-gray-700 dark:text-gray-300">${result.I_integrity.toFixed(4)}</td>
+                </tr>
+            `;
+        });
+        
+        // Create charts
+        createComparisonChart(results);
+        createRadarChart(results);
+        createPerformanceChart(results);
+        
+        // Scroll to results
+        document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth' });
+    }
+    
+    function createComparisonChart(results) {
+        const ctx = document.getElementById('comparisonChart').getContext('2d');
+        
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: results.map(r => r.algorithm),
+                datasets: [{
+                    label: 'Umumiy Ball (S)',
+                    data: results.map(r => r.S_overall_score),
+                    backgroundColor: [
+                        'rgba(59, 130, 246, 0.8)',
+                        'rgba(239, 68, 68, 0.8)',
+                        'rgba(251, 146, 60, 0.8)',
+                        'rgba(168, 85, 247, 0.8)'
+                    ],
+                    borderColor: [
+                        'rgb(59, 130, 246)',
+                        'rgb(239, 68, 68)',
+                        'rgb(251, 146, 60)',
+                        'rgb(168, 85, 247)'
+                    ],
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    title: {
+                        display: true,
+                        text: 'Algoritmlar Samaradorligi',
+                        font: { size: 16, weight: 'bold' }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 1
+                    }
+                }
+            }
+        });
+    }
+    
+    function createRadarChart(results) {
+        const ctx = document.getElementById('radarChart').getContext('2d');
+        
+        const datasets = results.map((result, index) => {
+            const colors = [
+                'rgba(31, 119, 180, 0.6)',   // blue
+                'rgba(255, 127, 14, 0.6)',   // orange
+                'rgba(44, 160, 44, 0.6)',    // green
+                'rgba(214, 39, 40, 0.6)',    // red
+                'rgba(148, 103, 189, 0.6)',  // purple
+                'rgba(140, 86, 75, 0.6)'     // brown
+            ];
+            
+            return {
+                label: result.algorithm,
+                data: [
+                    result.T_performance,
+                    result.E_security,
+                    result.K_key_management,
+                    result.I_integrity
+                ],
+                backgroundColor: colors[index],
+                borderColor: colors[index].replace('0.6', '1'),
+                borderWidth: 2
+            };
+        });
+        
+        new Chart(ctx, {
+            type: 'radar',
+            data: {
+                labels: ['Tezlik (T)', 'Xavfsizlik (E)', 'Kalit Boshqaruv (K)', 'Yaxlitlik (I)'],
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                },
+                scales: {
+                    r: {
+                        beginAtZero: true,
+                        max: 1
+                    }
+                }
+            }
+        });
+    }
+    
+    function createPerformanceChart(results) {
+        const ctx = document.getElementById('performanceChart').getContext('2d');
+        
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: results.map(r => r.algorithm),
+                datasets: [
+                    {
+                        label: 'CPU (%)',
+                        data: results.map(r => r.avg_cpu_percent),
+                        borderColor: 'rgb(239, 68, 68)',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'RAM (MB)',
+                        data: results.map(r => r.avg_memory_mb),
+                        borderColor: 'rgb(59, 130, 246)',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        yAxisID: 'y1'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'CPU va RAM Sarfi',
+                        font: { size: 16, weight: 'bold' }
+                    }
+                },
+                scales: {
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        title: {
+                            display: true,
+                            text: 'CPU (%)'
+                        }
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        title: {
+                            display: true,
+                            text: 'RAM (MB)'
+                        },
+                        grid: {
+                            drawOnChartArea: false
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // Save encrypted data
+    let currentPlaintext = '';
+    
+    function showSaveModal() {
+        if (!currentPlaintext) {
+            alert('Avval tahlil bajaring!');
+            return;
+        }
+        document.getElementById('saveModal').classList.remove('hidden');
+    }
+    
+    function closeSaveModal() {
+        document.getElementById('saveModal').classList.add('hidden');
+    }
+    
+    async function saveEncrypted() {
+        const algorithm = document.getElementById('saveAlgorithm').value;
+        
+        if (!currentPlaintext) {
+            alert('Ma\'lumot topilmadi!');
+            return;
+        }
+        
+        try {
+            const formData = new FormData();
+            formData.append('algorithm', algorithm);
+            formData.append('plaintext', currentPlaintext);
+            
+            const response = await fetch('/encrypt', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                alert('Ma\'lumot muvaffaqiyatli saqlandi!');
+                closeSaveModal();
+                
+                // Redirect to encrypted page
+                if (confirm('Shifrlangan ma\'lumotlarni ko\'rmoqchimisiz?')) {
+                    window.location.href = '/encrypted';
+                }
+            } else {
+                alert('Xatolik: ' + data.error);
+            }
+        } catch (error) {
+            alert('Xatolik: ' + error.message);
+        }
+    }
+</script>
+{% endblock %}

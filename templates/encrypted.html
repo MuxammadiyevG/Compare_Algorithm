@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+
+{% block title %}Shifrlangan Ma'lumotlar - Intellektual Audit Modeli{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in">
+    <!-- Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            <i class="fas fa-lock mr-3 text-primary"></i>Shifrlangan Ma'lumotlar
+        </h1>
+        <p class="text-gray-600 dark:text-gray-400">Sizning shifrlangan matn va fayllaringiz</p>
+    </div>
+    
+    {% if encrypted_data %}
+    <!-- Encrypted Data List -->
+    <div class="grid grid-cols-1 gap-6">
+        {% for data in encrypted_data %}
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 card-hover border-l-4 
+                    {% if data.algorithm == 'AES' %}border-blue-500
+                    {% elif data.algorithm == 'DES' %}border-red-500
+                    {% elif data.algorithm == 'Blowfish' %}border-orange-500
+                    {% else %}border-purple-500{% endif %}">
+            
+            <div class="flex items-start justify-between">
+                <!-- Left Side - Info -->
+                <div class="flex-1">
+                    <div class="flex items-center mb-3">
+                        <i class="fas fa-{% if data.content_type == 'file' %}file{% else %}font{% endif %} text-2xl mr-3
+                           {% if data.algorithm == 'AES' %}text-blue-500
+                           {% elif data.algorithm == 'DES' %}text-red-500
+                           {% elif data.algorithm == 'Blowfish' %}text-orange-500
+                           {% else %}text-purple-500{% endif %}"></i>
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-900 dark:text-white">
+                                {% if data.original_filename %}
+                                    {{ data.original_filename }}
+                                {% else %}
+                                    Shifrlangan Matn #{{ data.id }}
+                                {% endif %}
+                            </h3>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">
+                                {{ data.created_at.strftime('%Y-%m-%d %H:%M') }}
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                        <div>
+                            <span class="text-xs text-gray-500 dark:text-gray-400">Algoritm:</span>
+                            <p class="font-semibold text-gray-900 dark:text-white">{{ data.algorithm }}</p>
+                        </div>
+                        <div>
+                            <span class="text-xs text-gray-500 dark:text-gray-400">Turi:</span>
+                            <p class="font-semibold text-gray-900 dark:text-white">
+                                {% if data.content_type == 'file' %}
+                                    <i class="fas fa-file mr-1"></i>Fayl
+                                {% else %}
+                                    <i class="fas fa-font mr-1"></i>Matn
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div>
+                            <span class="text-xs text-gray-500 dark:text-gray-400">Kalit ID:</span>
+                            <p class="font-mono text-xs text-gray-700 dark:text-gray-300">{{ data.key_id[:20] }}...</p>
+                        </div>
+                        <div>
+                            <span class="text-xs text-gray-500 dark:text-gray-400">Status:</span>
+                            <p class="font-semibold text-green-600 dark:text-green-400">
+                                <i class="fas fa-shield-alt mr-1"></i>Xavfsiz
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Right Side - Actions -->
+                <div class="flex flex-col gap-2 ml-4">
+                    <button onclick="decryptData({{ data.id }})" 
+                            class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center">
+                        <i class="fas fa-unlock mr-2"></i>Deshifrlash
+                    </button>
+                    <button onclick="deleteEncrypted({{ data.id }})" 
+                            class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center">
+                        <i class="fas fa-trash mr-2"></i>O'chirish
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    {% else %}
+    <!-- Empty State -->
+    <div class="bg-yellow-100 dark:bg-yellow-900 rounded-xl p-8 text-center">
+        <i class="fas fa-info-circle text-5xl text-yellow-600 dark:text-yellow-400 mb-4"></i>
+        <p class="text-xl text-yellow-800 dark:text-yellow-200 mb-4">Shifrlangan ma'lumotlar topilmadi</p>
+        <p class="text-gray-700 dark:text-gray-300 mb-6">Ma'lumotlarni shifrlash uchun tahlil sahifasiga o'ting</p>
+        <a href="{{ url_for('analyze') }}" class="inline-block bg-primary hover:bg-purple-700 text-white font-semibold px-8 py-3 rounded-lg transition-colors shadow-lg">
+            <i class="fas fa-chart-line mr-2"></i>Tahlil Boshlash
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Decrypt Modal -->
+<div id="decryptModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-8 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
+                <i class="fas fa-unlock-alt mr-2 text-green-600"></i>Deshifrlangan Ma'lumot
+            </h2>
+            <button onclick="closeDecryptModal()" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+        
+        <div id="decryptedContent" class="mb-6">
+            <!-- Content will be inserted here -->
+        </div>
+        
+        <div class="flex gap-4">
+            <button onclick="copyDecrypted()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-colors">
+                <i class="fas fa-copy mr-2"></i>Nusxa Olish
+            </button>
+            <button onclick="closeDecryptModal()" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 rounded-lg transition-colors">
+                <i class="fas fa-times mr-2"></i>Yopish
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Indicator -->
+<div id="loadingIndicator" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white dark:bg-gray-800 rounded-xl p-8 text-center">
+        <div class="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-primary mb-4"></div>
+        <p class="text-xl font-semibold text-gray-900 dark:text-white">Deshifrlanmoqda...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentDecryptedText = '';
+
+async function decryptData(encryptedId) {
+    // Show loading
+    document.getElementById('loadingIndicator').classList.remove('hidden');
+    
+    try {
+        const response = await fetch('/decrypt/' + encryptedId, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            currentDecryptedText = data.plaintext;
+            
+            // Display in modal
+            const algorithm = data.algorithm || 'Unknown';
+            const plaintext = (data.plaintext || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            
+            const contentHTML = 
+                '<div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 mb-4">' +
+                    '<div class="flex items-center justify-between mb-2">' +
+                        '<span class="text-sm font-semibold text-gray-600 dark:text-gray-400">Algoritm:</span>' +
+                        '<span class="text-sm font-bold text-primary">' + algorithm + '</span>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="bg-green-50 dark:bg-green-900 border-l-4 border-green-500 p-4 mb-4">' +
+                    '<p class="text-sm text-green-800 dark:text-green-200 flex items-center">' +
+                        '<i class="fas fa-check-circle mr-2"></i>' +
+                        'Deshifrlash muvaffaqiyatli amalga oshirildi!' +
+                    '</p>' +
+                '</div>' +
+                '<div class="bg-gray-100 dark:bg-gray-700 rounded-lg p-4">' +
+                    '<label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">' +
+                        'Asl Matn:' +
+                    '</label>' +
+                    '<textarea id="decryptedTextarea" readonly ' +
+                        'class="w-full h-64 px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white font-mono text-sm">' +
+                        plaintext +
+                    '</textarea>' +
+                '</div>';
+            
+            document.getElementById('decryptedContent').innerHTML = contentHTML;
+            
+            // Show modal
+            document.getElementById('decryptModal').classList.remove('hidden');
+        } else {
+            alert('Xatolik: ' + (data.error || 'Noma\'lum xatolik'));
+        }
+    } catch (error) {
+        alert('Xatolik: ' + error.message);
+    } finally {
+        document.getElementById('loadingIndicator').classList.add('hidden');
+    }
+}
+
+function closeDecryptModal() {
+    document.getElementById('decryptModal').classList.add('hidden');
+    currentDecryptedText = '';
+}
+
+function copyDecrypted() {
+    const textarea = document.getElementById('decryptedTextarea');
+    if (textarea) {
+        textarea.select();
+        document.execCommand('copy');
+        
+        // Show success message
+        alert('Matn nusxa olindi!');
+    }
+}
+
+async function deleteEncrypted(encryptedId) {
+    if (!confirm('Haqiqatan ham bu shifrlangan ma\'lumotni o\'chirmoqchimisiz?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/delete_encrypted/' + encryptedId, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Ma\'lumot o\'chirildi!');
+            location.reload();
+        } else {
+            alert('Xatolik: ' + (data.error || 'Noma\'lum xatolik'));
+        }
+    } catch (error) {
+        alert('Xatolik: ' + error.message);
+    }
+}
+
+// Close modal on ESC key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeDecryptModal();
+    }
+});
+</script>
+{% endblock %}
