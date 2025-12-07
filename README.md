@@ -16,6 +16,9 @@ Bu veb-ilova simmetrik shifrlash algoritmlarini (AES, DES, Blowfish, ChaCha20) t
 
 ### 1. Virtual muhit yaratish
 ```bash
+git clone git@github.com:MuxammadiyevG/Compare_Algorithm.git
+```
+```bash
 python -m venv venv
 venv\Scripts\activate  # Windows
 ```
